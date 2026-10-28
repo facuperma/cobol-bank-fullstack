@@ -1,0 +1,6 @@
+           SELECT OPTIONAL USUARIOS
+               ASSIGN TO "data/USUARIOS.DAT"
+               ORGANIZATION IS INDEXED
+               ACCESS MODE IS DYNAMIC
+               RECORD KEY IS USU-ID
+               FILE STATUS IS FS-USUARIOS.

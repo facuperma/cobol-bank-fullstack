@@ -1,0 +1,4 @@
+           SELECT OPTIONAL MOVIMIENTOS
+               ASSIGN TO "data/MOVIMIENTOS.DAT"
+               ORGANIZATION IS SEQUENTIAL
+               FILE STATUS IS FS-MOVIM.

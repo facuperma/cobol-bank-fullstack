@@ -1,0 +1,7 @@
+           SELECT OPTIONAL CLIENTES
+               ASSIGN TO "data/CLIENTES.DAT"
+               ORGANIZATION IS INDEXED
+               ACCESS MODE IS DYNAMIC
+               RECORD KEY IS CLI-ID
+               ALTERNATE RECORD KEY IS CLI-DOCUMENTO
+               FILE STATUS IS FS-CLIENTES.

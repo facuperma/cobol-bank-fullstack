@@ -1,0 +1,8 @@
+           SELECT OPTIONAL CUENTAS
+               ASSIGN TO "data/CUENTAS.DAT"
+               ORGANIZATION IS INDEXED
+               ACCESS MODE IS DYNAMIC
+               RECORD KEY IS CTA-NRO
+               ALTERNATE RECORD KEY IS CTA-ID-CLIENTE
+                   WITH DUPLICATES
+               FILE STATUS IS FS-CUENTAS.

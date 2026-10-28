@@ -1,0 +1,6 @@
+           SELECT OPTIONAL CONTROL-F
+               ASSIGN TO "data/CONTROL.DAT"
+               ORGANIZATION IS INDEXED
+               ACCESS MODE IS DYNAMIC
+               RECORD KEY IS CTL-CLAVE
+               FILE STATUS IS FS-CONTROL.

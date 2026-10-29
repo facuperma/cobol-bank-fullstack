@@ -12,6 +12,9 @@ OPCIONES="-x -fstatic-call -Wall -I copy"
 echo "Compilando bin/banco..."
 cobc $OPCIONES -o bin/banco src/BANCO.cbl src/CLIENTES.cbl src/CUENTAS.cbl \
      src/TRANSAC.cbl src/EXTRACTO.cbl $BATCH $COMUNES
+echo "Compilando bin/servicio..."
+cobc $OPCIONES -o bin/servicio src/SERVICIO.cbl src/CLIENTES.cbl src/CUENTAS.cbl \
+     src/TRANSAC.cbl src/EXTRACTO.cbl $BATCH $COMUNES
 echo "Compilando bin/batch..."
 cobc $OPCIONES -o bin/batch src/BATCH.cbl src/CARGA.cbl $BATCH $COMUNES
 echo "Compilando bin/tstalter..."

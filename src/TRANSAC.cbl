@@ -20,14 +20,16 @@
        COPY PARAMETROS.
        COPY AUD-DATOS.
        COPY MOV-PARAMS.
+       COPY MODO.
 
        01 WS-PROMPT             PIC X(40).
+       01 WS-PROMPT-TXT         PIC X(60).
        01 WS-MAX                PIC 99.
        01 WS-NUMERO             PIC 9(12).
        01 WS-CERO               PIC X VALUE "N".
        01 WS-OK                 PIC X.
        01 WS-MENSAJE            PIC X(40).
-       01 WS-ENTRADA            PIC X(20).
+       01 WS-ENTRADA            PIC X(50).
        01 WS-OPC-PIN            PIC XX VALUE "PI".
        01 WS-CTA                PIC 9(10).
        01 WS-CTA-DESTINO        PIC 9(10).
@@ -40,6 +42,7 @@
        01 WS-SECUENCIA          PIC X(3).
        01 WS-OPERACION          PIC 9(12).
        01 WS-SALDO-ED           PIC -ZZ,ZZZ,ZZZ,ZZ9.99.
+       01 WS-SRV-IMPORTE        PIC -(11)9.99.
 
        LINKAGE SECTION.
        COPY SESION.
@@ -114,7 +117,8 @@
            MOVE "OK" TO AUD-RESULTADO
            CALL "AUDITORIA" USING AUD-DATOS
            MOVE WS-SALDO-ORIGEN TO WS-SALDO-ED
-           DISPLAY "OK: Deposito acreditado. Saldo: " WS-SALDO-ED.
+           DISPLAY "OK: Deposito acreditado. Saldo: " WS-SALDO-ED
+           PERFORM P-DATOS-SERVICIO.
 
       *> ---------------------------------------------------------
       *> Retiro. Orden de validaciones:
@@ -199,7 +203,8 @@
            MOVE "OK" TO AUD-RESULTADO
            CALL "AUDITORIA" USING AUD-DATOS
            MOVE WS-SALDO-ORIGEN TO WS-SALDO-ED
-           DISPLAY "OK: Retiro realizado. Saldo: " WS-SALDO-ED.
+           DISPLAY "OK: Retiro realizado. Saldo: " WS-SALDO-ED
+           PERFORM P-DATOS-SERVICIO.
 
       *> ---------------------------------------------------------
       *> Transferencia. Se valida todo antes de tocar saldos; si
@@ -327,7 +332,8 @@
            CALL "AUDITORIA" USING AUD-DATOS
            MOVE WS-SALDO-ORIGEN TO WS-SALDO-ED
            DISPLAY "OK: Transferencia realizada (operacion "
-                   WS-OPERACION "). Saldo origen: " WS-SALDO-ED.
+                   WS-OPERACION "). Saldo origen: " WS-SALDO-ED
+           PERFORM P-DATOS-SERVICIO.
 
        P-ACREDITAR-DESTINO.
            MOVE WS-CTA-DESTINO TO CTA-NRO
@@ -346,7 +352,7 @@
            END-IF.
 
        P-COMPENSAR-ORIGEN.
-           MOVE "Fallo el credito; transferencia revertida"
+           MOVE "Credito fallido; transferencia revertida"
                TO WS-MENSAJE
            MOVE WS-CTA TO CTA-NRO
            READ CUENTAS KEY IS CTA-NRO
@@ -382,9 +388,8 @@
 
        P-PEDIR-PIN.
            MOVE "N" TO WS-OK
-           DISPLAY "PIN: " WITH NO ADVANCING
-           MOVE SPACES TO WS-ENTRADA
-           ACCEPT WS-ENTRADA
+           MOVE "PIN" TO WS-PROMPT-TXT
+           CALL "LEERTXT" USING WS-PROMPT-TXT WS-ENTRADA
            IF WS-ENTRADA(1:4) IS NUMERIC AND WS-ENTRADA(5:) = SPACES
                MOVE WS-ENTRADA(1:4) TO WS-PIN
                MOVE "S" TO WS-OK
@@ -401,6 +406,14 @@
            MOVE "OPE" TO WS-SECUENCIA
            CALL "NUMERADOR" USING WS-SECUENCIA WS-OPERACION
            MOVE WS-OPERACION TO MOVP-OPERACION.
+
+      *> Datos de respuesta para la API (solo en modo servicio).
+       P-DATOS-SERVICIO.
+           IF MODO-SERVICIO
+               MOVE WS-SALDO-ORIGEN TO WS-SRV-IMPORTE
+               DISPLAY "@SALDO|" FUNCTION TRIM(WS-SRV-IMPORTE)
+               DISPLAY "@OPERACION|" WS-OPERACION
+           END-IF.
 
        P-RECHAZO.
            DISPLAY "ERROR: " FUNCTION TRIM(WS-MENSAJE)

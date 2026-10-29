@@ -26,14 +26,16 @@
        COPY PARAMETROS.
        COPY AUD-DATOS.
        COPY MOV-PARAMS.
+       COPY MODO.
 
        01 WS-PROMPT             PIC X(40).
+       01 WS-PROMPT-TXT         PIC X(60).
        01 WS-MAX                PIC 99.
        01 WS-NUMERO             PIC 9(12).
        01 WS-CERO               PIC X.
        01 WS-OK                 PIC X.
        01 WS-MENSAJE            PIC X(40).
-       01 WS-ENTRADA            PIC X(20).
+       01 WS-ENTRADA            PIC X(50).
        01 WS-CTA                PIC 9(10).
        01 WS-ID-CLIENTE         PIC 9(6).
        01 WS-PIN                PIC X(4).
@@ -44,6 +46,7 @@
        01 WS-HASH               PIC 9(8).
        01 WS-SECUENCIA          PIC X(3).
        01 WS-SALDO-ED           PIC -ZZ,ZZZ,ZZZ,ZZ9.99.
+       01 WS-SRV-IMPORTE        PIC -(11)9.99.
        01 WS-INTENTO-ED         PIC 9.
 
        LINKAGE SECTION.
@@ -107,23 +110,22 @@
            END-IF
            MOVE WS-NUMERO TO WS-ID-CLIENTE
 
-           DISPLAY "Tipo (A = caja de ahorro, C = cuenta corriente): "
-               WITH NO ADVANCING
-           MOVE SPACES TO WS-ENTRADA
-           ACCEPT WS-ENTRADA
+           MOVE "Tipo (A = caja de ahorro, C = cuenta corriente)"
+               TO WS-PROMPT-TXT
+           CALL "LEERTXT" USING WS-PROMPT-TXT WS-ENTRADA
            MOVE FUNCTION UPPER-CASE(WS-ENTRADA(1:1)) TO WS-TIPO
            IF WS-TIPO NOT = "A" AND WS-TIPO NOT = "C"
                DISPLAY "ERROR: Tipo de cuenta invalido"
                EXIT PARAGRAPH
            END-IF
 
-           DISPLAY "PIN (4 digitos): " WITH NO ADVANCING
+           MOVE "PIN (4 digitos)" TO WS-PROMPT-TXT
            PERFORM P-ACEPTAR-PIN
            IF WS-OK = "N"
                EXIT PARAGRAPH
            END-IF
            MOVE WS-PIN TO WS-PIN2
-           DISPLAY "Repetir PIN: " WITH NO ADVANCING
+           MOVE "Repetir PIN" TO WS-PROMPT-TXT
            PERFORM P-ACEPTAR-PIN
            IF WS-OK = "N"
                EXIT PARAGRAPH
@@ -189,7 +191,10 @@
            MOVE "OK" TO AUD-RESULTADO
            CALL "AUDITORIA" USING AUD-DATOS
 
-           DISPLAY "OK: Cuenta " WS-CTA " abierta".
+           DISPLAY "OK: Cuenta " WS-CTA " abierta"
+           IF MODO-SERVICIO
+               DISPLAY "@CUENTA|" WS-CTA
+           END-IF.
 
       *> ---------------------------------------------------------
       *> Consulta de saldo (RF8)
@@ -203,7 +208,7 @@
            END-IF
            MOVE WS-NUMERO TO WS-CTA
 
-           DISPLAY "PIN: " WITH NO ADVANCING
+           MOVE "PIN" TO WS-PROMPT-TXT
            PERFORM P-ACEPTAR-PIN
            IF WS-OK = "N"
                EXIT PARAGRAPH
@@ -234,18 +239,26 @@
                    MOVE SPACES TO CLI-NOMBRE CLI-APELLIDO
            END-READ
 
-           MOVE CTA-SALDO TO WS-SALDO-ED
-           DISPLAY "------------------------------------------"
-           DISPLAY " Cuenta  : " CTA-NRO
-           IF CTA-AHORRO
-               DISPLAY " Tipo    : Caja de ahorro"
+           IF MODO-SERVICIO
+               MOVE CTA-SALDO TO WS-SRV-IMPORTE
+               DISPLAY "@SALDO|" CTA-NRO "|" CTA-TIPO "|"
+                       FUNCTION TRIM(WS-SRV-IMPORTE) "|"
+                       CTA-ID-CLIENTE "|" FUNCTION TRIM(CLI-APELLIDO)
+                       ", " FUNCTION TRIM(CLI-NOMBRE)
            ELSE
-               DISPLAY " Tipo    : Cuenta corriente"
+               MOVE CTA-SALDO TO WS-SALDO-ED
+               DISPLAY "------------------------------------------"
+               DISPLAY " Cuenta  : " CTA-NRO
+               IF CTA-AHORRO
+                   DISPLAY " Tipo    : Caja de ahorro"
+               ELSE
+                   DISPLAY " Tipo    : Cuenta corriente"
+               END-IF
+               DISPLAY " Titular : " FUNCTION TRIM(CLI-APELLIDO) ", "
+                       FUNCTION TRIM(CLI-NOMBRE)
+               DISPLAY " Saldo   : " WS-SALDO-ED
+               DISPLAY "------------------------------------------"
            END-IF
-           DISPLAY " Titular : " FUNCTION TRIM(CLI-APELLIDO) ", "
-                   FUNCTION TRIM(CLI-NOMBRE)
-           DISPLAY " Saldo   : " WS-SALDO-ED
-           DISPLAY "------------------------------------------"
            CLOSE CUENTAS CLIENTES
 
            MOVE "CONSULTA" TO AUD-OPERACION
@@ -356,8 +369,7 @@
 
        P-ACEPTAR-PIN.
            MOVE "N" TO WS-OK
-           MOVE SPACES TO WS-ENTRADA
-           ACCEPT WS-ENTRADA
+           CALL "LEERTXT" USING WS-PROMPT-TXT WS-ENTRADA
            IF WS-ENTRADA(1:4) IS NUMERIC AND WS-ENTRADA(5:) = SPACES
                MOVE WS-ENTRADA(1:4) TO WS-PIN
                MOVE "S" TO WS-OK

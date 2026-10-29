@@ -22,11 +22,13 @@
        01 FS-CUENTAS            PIC XX.
        COPY PARAMETROS.
        COPY AUD-DATOS.
+       COPY MODO.
 
        01 WS-OPCION             PIC X.
        01 WS-VACIAS             PIC 9 VALUE 0.
        01 WS-SALIR              PIC X VALUE "N".
        01 WS-PROMPT             PIC X(40).
+       01 WS-PROMPT-TXT         PIC X(60).
        01 WS-MAX                PIC 99.
        01 WS-NUMERO             PIC 9(12).
        01 WS-OK                 PIC X.
@@ -42,6 +44,7 @@
        01 WS-ENCONTRADOS        PIC 9(5).
        01 WS-SALDO-TOTAL        PIC S9(13)V99 COMP-3.
        01 WS-SALDO-ED           PIC -ZZ,ZZZ,ZZZ,ZZ9.99.
+       01 WS-SRV-IMPORTE        PIC -(11)9.99.
        01 WS-FECHA-ED           PIC 9999/99/99.
 
        LINKAGE SECTION.
@@ -52,22 +55,29 @@
            MOVE SES-USUARIO TO AUD-USUARIO
            MOVE ZERO TO AUD-CUENTA AUD-IMPORTE
            MOVE FUNCTION CURRENT-DATE(1:8) TO WS-HOY
-           PERFORM P-MENU UNTIL WS-SALIR = "S"
+      *>   En modo servicio cada pedido es una sola operacion.
+           IF MODO-SERVICIO
+               PERFORM P-MENU
+           ELSE
+               PERFORM P-MENU UNTIL WS-SALIR = "S"
+           END-IF
            GOBACK.
 
        P-MENU.
-           DISPLAY " "
-           DISPLAY "---------- GESTION DE CLIENTES ----------"
-           DISPLAY "  1. Alta de cliente"
-           DISPLAY "  2. Modificacion de datos"
-           DISPLAY "  3. Baja de cliente"
-           DISPLAY "  4. Consulta por ID"
-           DISPLAY "  5. Buscar por documento"
-           DISPLAY "  6. Buscar por apellido"
-           DISPLAY "  9. Volver"
-           DISPLAY "Opcion: " WITH NO ADVANCING
-           MOVE SPACES TO WS-OPCION
-           ACCEPT WS-OPCION
+           IF NOT MODO-SERVICIO
+               DISPLAY " "
+               DISPLAY "---------- GESTION DE CLIENTES ----------"
+               DISPLAY "  1. Alta de cliente"
+               DISPLAY "  2. Modificacion de datos"
+               DISPLAY "  3. Baja de cliente"
+               DISPLAY "  4. Consulta por ID"
+               DISPLAY "  5. Buscar por documento"
+               DISPLAY "  6. Buscar por apellido"
+               DISPLAY "  9. Volver"
+           END-IF
+           MOVE "Opcion" TO WS-PROMPT-TXT
+           CALL "LEERTXT" USING WS-PROMPT-TXT WS-ENTRADA
+           MOVE WS-ENTRADA(1:1) TO WS-OPCION
 
            EVALUATE WS-OPCION
                WHEN "1" PERFORM P-ALTA
@@ -92,7 +102,7 @@
       *> Alta
       *> ---------------------------------------------------------
        P-ALTA.
-           DISPLAY "Documento (7 a 12 digitos): " WITH NO ADVANCING
+           MOVE "Documento (7 a 12 digitos)" TO WS-PROMPT-TXT
            PERFORM P-ACEPTAR-DOCUMENTO
            IF WS-OK = "N"
                EXIT PARAGRAPH
@@ -122,10 +132,10 @@
            INITIALIZE REG-CLIENTE
            MOVE WS-DOCUMENTO TO CLI-DOCUMENTO
 
-           DISPLAY "Nombre: " WITH NO ADVANCING
+           MOVE "Nombre" TO WS-PROMPT-TXT
            PERFORM P-ACEPTAR-TEXTO
            MOVE FUNCTION UPPER-CASE(WS-TXT) TO CLI-NOMBRE
-           DISPLAY "Apellido: " WITH NO ADVANCING
+           MOVE "Apellido" TO WS-PROMPT-TXT
            PERFORM P-ACEPTAR-TEXTO
            MOVE FUNCTION UPPER-CASE(WS-TXT) TO CLI-APELLIDO
            IF CLI-NOMBRE = SPACES OR CLI-APELLIDO = SPACES
@@ -134,18 +144,17 @@
                EXIT PARAGRAPH
            END-IF
 
-           DISPLAY "Fecha de nacimiento (AAAAMMDD): "
-               WITH NO ADVANCING
+           MOVE "Fecha de nacimiento (AAAAMMDD)" TO WS-PROMPT-TXT
            PERFORM P-ACEPTAR-FECHA-NAC
            IF WS-OK = "N"
                CLOSE CLIENTES
                EXIT PARAGRAPH
            END-IF
 
-           DISPLAY "Direccion: " WITH NO ADVANCING
+           MOVE "Direccion" TO WS-PROMPT-TXT
            PERFORM P-ACEPTAR-TEXTO
            MOVE WS-TXT TO CLI-DIRECCION
-           DISPLAY "Telefono: " WITH NO ADVANCING
+           MOVE "Telefono" TO WS-PROMPT-TXT
            PERFORM P-ACEPTAR-TEXTO
            MOVE WS-TXT TO CLI-TELEFONO
 
@@ -172,7 +181,10 @@
            MOVE WS-ID TO AUD-CUENTA
            MOVE "OK" TO AUD-RESULTADO
            CALL "AUDITORIA" USING AUD-DATOS
-           DISPLAY "OK: Cliente " WS-ID " dado de alta".
+           DISPLAY "OK: Cliente " WS-ID " dado de alta"
+           IF MODO-SERVICIO
+               DISPLAY "@ID|" WS-ID
+           END-IF.
 
       *> ---------------------------------------------------------
       *> Modificacion: un campo vacio conserva el valor actual.
@@ -200,15 +212,13 @@
            END-IF
 
            DISPLAY "Direccion actual: " FUNCTION TRIM(CLI-DIRECCION)
-           DISPLAY "Nueva direccion (Enter = sin cambios): "
-               WITH NO ADVANCING
+           MOVE "Nueva direccion (Enter = sin cambios)" TO WS-PROMPT-TXT
            PERFORM P-ACEPTAR-TEXTO
            IF WS-TXT NOT = SPACES
                MOVE WS-TXT TO CLI-DIRECCION
            END-IF
            DISPLAY "Telefono actual: " FUNCTION TRIM(CLI-TELEFONO)
-           DISPLAY "Nuevo telefono (Enter = sin cambios): "
-               WITH NO ADVANCING
+           MOVE "Nuevo telefono (Enter = sin cambios)" TO WS-PROMPT-TXT
            PERFORM P-ACEPTAR-TEXTO
            IF WS-TXT NOT = SPACES
                MOVE WS-TXT TO CLI-TELEFONO
@@ -347,7 +357,7 @@
            CLOSE CLIENTES.
 
        P-BUSCAR-DOCUMENTO.
-           DISPLAY "Documento: " WITH NO ADVANCING
+           MOVE "Documento" TO WS-PROMPT-TXT
            PERFORM P-ACEPTAR-DOCUMENTO
            IF WS-OK = "N"
                EXIT PARAGRAPH
@@ -367,8 +377,7 @@
       *> Busqueda por apellido (o su comienzo): recorrido
       *> secuencial completo del archivo.
        P-BUSCAR-APELLIDO.
-           DISPLAY "Apellido o inicio del apellido: "
-               WITH NO ADVANCING
+           MOVE "Apellido o inicio del apellido" TO WS-PROMPT-TXT
            PERFORM P-ACEPTAR-TEXTO
            MOVE FUNCTION UPPER-CASE(WS-TXT) TO WS-TXT
            MOVE ZERO TO WS-LARGO
@@ -406,6 +415,10 @@
            DISPLAY "Clientes encontrados: " WS-ENCONTRADOS.
 
        P-MOSTRAR-CLIENTE.
+           IF MODO-SERVICIO
+               PERFORM P-DATO-CLIENTE
+               EXIT PARAGRAPH
+           END-IF
            MOVE CLI-FECHA-NAC TO WS-FECHA-ED
            DISPLAY "------------------------------------------"
            DISPLAY " Cliente    : " CLI-ID
@@ -422,19 +435,37 @@
            END-IF.
 
        P-LINEA-CLIENTE.
+           IF MODO-SERVICIO
+               PERFORM P-DATO-CLIENTE
+               EXIT PARAGRAPH
+           END-IF
            DISPLAY " " CLI-ID "  " CLI-DOCUMENTO "  "
                    FUNCTION TRIM(CLI-APELLIDO) ", "
                    FUNCTION TRIM(CLI-NOMBRE)
                    "  [" CLI-ESTADO "]".
 
+      *> Linea de datos para la API: un cliente por linea.
+       P-DATO-CLIENTE.
+           DISPLAY "@CLIENTE|" CLI-ID "|" FUNCTION TRIM(CLI-DOCUMENTO)
+                   "|" FUNCTION TRIM(CLI-NOMBRE)
+                   "|" FUNCTION TRIM(CLI-APELLIDO)
+                   "|" CLI-FECHA-NAC
+                   "|" FUNCTION TRIM(CLI-DIRECCION)
+                   "|" FUNCTION TRIM(CLI-TELEFONO)
+                   "|" CLI-ESTADO.
+
        P-LISTAR-CUENTAS.
-           DISPLAY " Cuentas:"
+           IF NOT MODO-SERVICIO
+               DISPLAY " Cuentas:"
+           END-IF
            MOVE "N" TO WS-FIN
            OPEN INPUT CUENTAS
            MOVE WS-ID TO CTA-ID-CLIENTE
            START CUENTAS KEY IS = CTA-ID-CLIENTE
                INVALID KEY
-                   DISPLAY "   (sin cuentas)"
+                   IF NOT MODO-SERVICIO
+                       DISPLAY "   (sin cuentas)"
+                   END-IF
                    MOVE "S" TO WS-FIN
            END-START
            PERFORM UNTIL WS-FIN = "S"
@@ -445,15 +476,26 @@
                        IF CTA-ID-CLIENTE NOT = WS-ID
                            MOVE "S" TO WS-FIN
                        ELSE
-                           MOVE CTA-SALDO TO WS-SALDO-ED
-                           DISPLAY "   " CTA-NRO "  " CTA-TIPO
-                                   "  " WS-SALDO-ED "  ["
-                                   CTA-ESTADO "]"
+                           PERFORM P-LINEA-CUENTA
                        END-IF
                END-READ
            END-PERFORM
            CLOSE CUENTAS
-           DISPLAY "------------------------------------------".
+           IF NOT MODO-SERVICIO
+               DISPLAY "------------------------------------------"
+           END-IF.
+
+       P-LINEA-CUENTA.
+           IF MODO-SERVICIO
+               MOVE CTA-SALDO TO WS-SRV-IMPORTE
+               DISPLAY "@CUENTA|" CTA-NRO "|" CTA-TIPO "|"
+                       FUNCTION TRIM(WS-SRV-IMPORTE) "|" CTA-ESTADO
+           ELSE
+               MOVE CTA-SALDO TO WS-SALDO-ED
+               DISPLAY "   " CTA-NRO "  " CTA-TIPO
+                       "  " WS-SALDO-ED "  ["
+                       CTA-ESTADO "]"
+           END-IF.
 
       *> ---------------------------------------------------------
       *> Validaciones de entrada
@@ -507,6 +549,5 @@
            MOVE "S" TO WS-OK.
 
        P-ACEPTAR-TEXTO.
-           MOVE SPACES TO WS-ENTRADA
-           ACCEPT WS-ENTRADA
+           CALL "LEERTXT" USING WS-PROMPT-TXT WS-ENTRADA
            MOVE FUNCTION TRIM(WS-ENTRADA) TO WS-TXT.

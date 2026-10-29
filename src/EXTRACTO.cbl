@@ -30,6 +30,7 @@
        01 FS-MOVIM              PIC XX.
        01 FS-REPORTE            PIC XX.
        COPY AUD-DATOS.
+       COPY MODO.
 
        01 WS-ARCHIVO            PIC X(60).
        01 WS-PROMPT             PIC X(40).
@@ -66,6 +67,10 @@
        01 WS-ED-FECHA2          PIC 9999/99/99.
        01 WS-ED-IMPORTE         PIC -ZZ,ZZZ,ZZZ,ZZ9.99.
        01 WS-ED-CANT            PIC ZZZZZ9.
+       01 WS-SRV-IMP1           PIC -(11)9.99.
+       01 WS-SRV-IMP2           PIC -(11)9.99.
+       01 WS-SRV-IMP3           PIC -(11)9.99.
+       01 WS-SRV-IMP4           PIC -(11)9.99.
        01 WS-SEPARADOR          PIC X(100) VALUE ALL "=".
 
        LINKAGE SECTION.
@@ -251,6 +256,15 @@
                    MOVE MOV-DESCRIPCION TO LM-DESC
                    MOVE WS-LINEA-MOV TO LIN-REPORTE
                    PERFORM P-ESCRIBIR
+                   IF MODO-SERVICIO
+                       MOVE MOV-IMPORTE TO WS-SRV-IMP1
+                       MOVE MOV-SALDO-POST TO WS-SRV-IMP2
+                       DISPLAY "@MOV|" MOV-FECHA "|" MOV-HORA "|"
+                               MOV-TIPO "|" FUNCTION TRIM(WS-SRV-IMP1)
+                               "|" FUNCTION TRIM(WS-SRV-IMP2) "|"
+                               MOV-OPERACION "|"
+                               FUNCTION TRIM(MOV-DESCRIPCION)
+                   END-IF
            END-EVALUATE.
 
        P-TOTALES.
@@ -287,10 +301,25 @@
            END-STRING
            PERFORM P-ESCRIBIR
            MOVE WS-SEPARADOR TO LIN-REPORTE
-           PERFORM P-ESCRIBIR.
+           PERFORM P-ESCRIBIR
+           IF MODO-SERVICIO
+               MOVE WS-SALDO-INICIAL TO WS-SRV-IMP1
+               MOVE WS-CREDITOS TO WS-SRV-IMP2
+               MOVE WS-DEBITOS TO WS-SRV-IMP3
+               MOVE WS-SALDO-FINAL TO WS-SRV-IMP4
+               DISPLAY "@TOTALES|" WS-CTA "|" FUNCTION TRIM(WS-TITULAR)
+                       "|" WS-CANTIDAD
+                       "|" FUNCTION TRIM(WS-SRV-IMP1)
+                       "|" FUNCTION TRIM(WS-SRV-IMP2)
+                       "|" FUNCTION TRIM(WS-SRV-IMP3)
+                       "|" FUNCTION TRIM(WS-SRV-IMP4)
+           END-IF.
 
-      *> Cada linea va al archivo y a la pantalla.
+      *> Cada linea va al archivo y a la pantalla (en modo servicio
+      *> la pantalla recibe las lineas de datos en su lugar).
        P-ESCRIBIR.
            WRITE LIN-REPORTE
-           DISPLAY FUNCTION TRIM(LIN-REPORTE TRAILING)
+           IF NOT MODO-SERVICIO
+               DISPLAY FUNCTION TRIM(LIN-REPORTE TRAILING)
+           END-IF
            MOVE SPACES TO LIN-REPORTE.

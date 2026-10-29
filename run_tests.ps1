@@ -21,6 +21,11 @@ function Invoke-Banco([string[]]$lineas) {
     ($lineas | & .\bin\banco.exe) -join "`n"
 }
 
+# Ejecuta un pedido del modo servicio (operacion, usuario y datos).
+function Invoke-Servicio([string[]]$lineas) {
+    ($lineas | & .\bin\servicio.exe) -join "`n"
+}
+
 function Invoke-Batch([string[]]$argumentos) {
     $salida = (& .\bin\batch.exe @argumentos) -join "`n"
     [pscustomobject]@{ Salida = $salida; Rc = $LASTEXITCODE }
@@ -168,6 +173,49 @@ Test-Caso 'T15' 'Exportacion de ancho fijo con cola de control' {
     if ($lineas[0] -notmatch '^HBANCOCOB') { 'falta la cabecera' }
     if (($lineas | Where-Object { $_ -match '^D' }).Count -ne 6) { 'se esperaban 6 detalles' }
     if ($lineas[-1] -notmatch '^T000000006') { 'la cola no informa 6 registros' }
+}
+
+Test-Caso 'T16' 'Servicio: login devuelve rol; clave incorrecta rechazada' {
+    $s = Invoke-Servicio 'LOGIN', 'super01', '9999'
+    Esperar $s '@USUARIO\|SUPER01\|S\|'
+    $s = Invoke-Servicio 'LOGIN', 'CAJERO01', 'mal'
+    Esperar $s 'ERROR: Usuario o clave incorrectos'
+}
+
+Test-Caso 'T17' 'Servicio: alta, apertura y consulta con lineas de datos' {
+    $s = Invoke-Servicio 'CLIENTES', 'CAJERO01', '1', '33444555', 'Ana', 'Martinez',
+                         '19950101', 'Calle 1', '11-4444-0000'
+    Esperar $s '@ID\|000006'
+    $s = Invoke-Servicio 'APERTURA', 'CAJERO01', '000006', 'C', '1111', '1111', '250.50'
+    Esperar $s '@CUENTA\|1000000009'
+    $s = Invoke-Servicio 'CLIENTES', 'CAJERO01', '4', '000006'
+    Esperar $s '@CLIENTE\|000006\|33444555\|ANA\|MARTINEZ\|19950101\|'
+    Esperar $s '@CUENTA\|1000000009\|C\|250\.50\|A'
+}
+
+Test-Caso 'T18' 'Servicio: operaciones devuelven saldo y respetan las reglas' {
+    $s = Invoke-Servicio 'RETIRO', 'CAJERO01', '1000000005', '3333', '200'
+    Esperar $s '@SALDO\|11800\.00'
+    $s = Invoke-Servicio 'RETIRO', 'CAJERO01', '1000000005', '3333', '400'
+    Esperar $s 'ERROR: Limite diario superado'
+    $s = Invoke-Servicio 'TRANSFERENCIA', 'CAJERO01', '1000000002', '1234', '1000000003', '500'
+    Esperar $s '@SALDO\|2500\.00'
+    $s = Invoke-Servicio 'EXTRACTO', 'CAJERO01', '1000000003', '20000101', '29991231'
+    Esperar $s '@MOV\|\d{8}\|\d{6}\|TC\|500\.00\|1300\.00\|'
+    Esperar $s '@TOTALES\|1000000003\|GOMEZ, MARIA\|000002\|0\.00\|1300\.00\|0\.00\|1300\.00'
+    $r = Invoke-Batch 'RECONCIL'
+    if ($r.Rc -ne 0) { 'la reconciliacion encontro diferencias' }
+}
+
+Test-Caso 'T19' 'Servicio: el rol sale de USUARIOS, no del pedido' {
+    $s = Invoke-Servicio 'DESBLOQUEO', 'CAJERO01', '1000000006'
+    Esperar $s 'ERROR: Operacion reservada a supervisores'
+    $s = Invoke-Servicio 'RECONCIL', 'CAJERO01', '', ''
+    Esperar $s 'ERROR: Operacion reservada a supervisores'
+    $s = Invoke-Servicio 'DEPOSITO', 'NADIE', '1000000001', '10'
+    Esperar $s 'ERROR: Usuario inexistente'
+    $s = Invoke-Servicio 'RECONCIL', 'SUPER01', '', ''
+    Esperar $s '@RC\|0'
 }
 
 Write-Host ''

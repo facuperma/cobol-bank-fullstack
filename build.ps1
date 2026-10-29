@@ -36,6 +36,8 @@ function Compilar([string]$salida, [string[]]$fuentes) {
 
 Compilar 'bin/banco.exe' (@('src/BANCO.cbl', 'src/CLIENTES.cbl', 'src/CUENTAS.cbl',
                             'src/TRANSAC.cbl', 'src/EXTRACTO.cbl') + $batch + $comunes)
+Compilar 'bin/servicio.exe' (@('src/SERVICIO.cbl', 'src/CLIENTES.cbl', 'src/CUENTAS.cbl',
+                               'src/TRANSAC.cbl', 'src/EXTRACTO.cbl') + $batch + $comunes)
 Compilar 'bin/batch.exe' (@('src/BATCH.cbl', 'src/CARGA.cbl') + $batch + $comunes)
 Compilar 'bin/tstalter.exe' @('tests/TSTALTER.cbl')
 

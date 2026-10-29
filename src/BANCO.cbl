@@ -71,7 +71,13 @@
            DISPLAY "Usuario: " WITH NO ADVANCING
            MOVE SPACES TO WS-ENTRADA
            ACCEPT WS-ENTRADA
-           MOVE FUNCTION UPPER-CASE(WS-ENTRADA) TO WS-USUARIO
+      *>   Ignora la marca BOM que agrega PowerShell al redirigir
+      *>   la entrada (si no, el primer usuario nunca coincide).
+           IF WS-ENTRADA(1:3) = X"EFBBBF"
+               MOVE FUNCTION UPPER-CASE(WS-ENTRADA(4:)) TO WS-USUARIO
+           ELSE
+               MOVE FUNCTION UPPER-CASE(WS-ENTRADA) TO WS-USUARIO
+           END-IF
            DISPLAY "Clave: " WITH NO ADVANCING
            MOVE SPACES TO WS-CLAVE
            ACCEPT WS-CLAVE

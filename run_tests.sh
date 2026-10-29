@@ -14,6 +14,7 @@ reset_datos() {
     ./bin/batch CARGA CONFIRMAR > /dev/null
 }
 banco() { printf '%s\n' "$@" | ./bin/banco; }
+servicio() { printf '%s\n' "$@" | ./bin/servicio; }
 esperar() {  # esperar <texto> <regex extendida>
     echo "$1" | grep -Eq -- "$2" || ERRORES="$ERRORES\n      no aparece: $2"
 }
@@ -140,6 +141,39 @@ t15() {
     tail -n 1 "$f" | grep -q '^T000000006' || fallar 'la cola no informa 6 registros'
 }
 
+t16() {
+    esperar "$(servicio LOGIN super01 9999)" '@USUARIO\|SUPER01\|S\|'
+    esperar "$(servicio LOGIN CAJERO01 mal)" 'ERROR: Usuario o clave incorrectos'
+}
+
+t17() {
+    local s
+    s=$(servicio CLIENTES CAJERO01 1 33444555 Ana Martinez 19950101 'Calle 1' 11-4444-0000)
+    esperar "$s" '@ID\|000006'
+    esperar "$(servicio APERTURA CAJERO01 000006 C 1111 1111 250.50)" '@CUENTA\|1000000009'
+    s=$(servicio CLIENTES CAJERO01 4 000006)
+    esperar "$s" '@CLIENTE\|000006\|33444555\|ANA\|MARTINEZ\|19950101\|'
+    esperar "$s" '@CUENTA\|1000000009\|C\|250\.50\|A'
+}
+
+t18() {
+    local s
+    esperar "$(servicio RETIRO CAJERO01 1000000005 3333 200)" '@SALDO\|11800\.00'
+    esperar "$(servicio RETIRO CAJERO01 1000000005 3333 400)" 'ERROR: Limite diario superado'
+    esperar "$(servicio TRANSFERENCIA CAJERO01 1000000002 1234 1000000003 500)" '@SALDO\|2500\.00'
+    s=$(servicio EXTRACTO CAJERO01 1000000003 20000101 29991231)
+    esperar "$s" '@MOV\|[0-9]{8}\|[0-9]{6}\|TC\|500\.00\|1300\.00\|'
+    esperar "$s" '@TOTALES\|1000000003\|GOMEZ, MARIA\|000002\|0\.00\|1300\.00\|0\.00\|1300\.00'
+    ./bin/batch RECONCIL > /dev/null || fallar 'la reconciliacion encontro diferencias'
+}
+
+t19() {
+    esperar "$(servicio DESBLOQUEO CAJERO01 1000000006)" 'ERROR: Operacion reservada a supervisores'
+    esperar "$(servicio RECONCIL CAJERO01 '' '')" 'ERROR: Operacion reservada a supervisores'
+    esperar "$(servicio DEPOSITO NADIE 1000000001 10)" 'ERROR: Usuario inexistente'
+    esperar "$(servicio RECONCIL SUPER01 '' '')" '@RC\|0'
+}
+
 caso T01 'Retiro mayor al saldo' t01
 caso T02 'Cuarto retiro supera el limite diario' t02
 caso T03 '3 PIN incorrectos bloquean la cuenta' t03
@@ -155,6 +189,10 @@ caso T12 'Alta de cliente, apertura con deposito y extracto' t12
 caso T13 'Supervisor desbloquea una cuenta' t13
 caso T14 'Baja rechazada si el cliente tiene saldo' t14
 caso T15 'Exportacion de ancho fijo con cola de control' t15
+caso T16 'Servicio: login devuelve rol; clave incorrecta rechazada' t16
+caso T17 'Servicio: alta, apertura y consulta con lineas de datos' t17
+caso T18 'Servicio: operaciones devuelven saldo y respetan las reglas' t18
+caso T19 'Servicio: el rol sale de USUARIOS, no del pedido' t19
 
 echo
 echo "Resultado: $((TOTAL - FALLAS)) de $TOTAL casos OK"

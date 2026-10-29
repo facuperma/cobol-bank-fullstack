@@ -2,14 +2,39 @@
       *> usuario. Cada rutina muestra el error y devuelve OK = "N"
       *> si la entrada no es valida.
 
+      *> LEERTXT: unico punto de entrada de datos. En la consola
+      *> muestra el prompt y lee del teclado; en modo servicio lee
+      *> la siguiente linea del pedido, sin prompt.
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. LEERTXT.
+
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       COPY MODO.
+
+       LINKAGE SECTION.
+       01 LK-PROMPT             PIC X(60).
+       01 LK-VALOR              PIC X(50).
+
+       PROCEDURE DIVISION USING LK-PROMPT LK-VALOR.
+       P-PRINCIPAL.
+           IF NOT MODO-SERVICIO
+               DISPLAY FUNCTION TRIM(LK-PROMPT) ": " WITH NO ADVANCING
+           END-IF
+           MOVE SPACES TO LK-VALOR
+           ACCEPT LK-VALOR
+           GOBACK.
+       END PROGRAM LEERTXT.
+
       *> PEDIRNUM: entero positivo de hasta LK-MAX digitos.
        IDENTIFICATION DIVISION.
        PROGRAM-ID. PEDIRNUM.
 
        DATA DIVISION.
        WORKING-STORAGE SECTION.
-       01 WS-ENTRADA            PIC X(40).
-       01 WS-TXT                PIC X(40).
+       01 WS-PROMPT             PIC X(60).
+       01 WS-ENTRADA            PIC X(50).
+       01 WS-TXT                PIC X(50).
        01 WS-LARGO              PIC 99.
 
        LINKAGE SECTION.
@@ -22,9 +47,8 @@
        P-PRINCIPAL.
            MOVE "N" TO LK-OK
            MOVE ZERO TO LK-NUMERO
-           DISPLAY FUNCTION TRIM(LK-PROMPT) ": " WITH NO ADVANCING
-           MOVE SPACES TO WS-ENTRADA
-           ACCEPT WS-ENTRADA
+           MOVE LK-PROMPT TO WS-PROMPT
+           CALL "LEERTXT" USING WS-PROMPT WS-ENTRADA
 
            MOVE FUNCTION TRIM(WS-ENTRADA) TO WS-TXT
            MOVE ZERO TO WS-LARGO
@@ -52,7 +76,8 @@
 
        DATA DIVISION.
        WORKING-STORAGE SECTION.
-       01 WS-ENTRADA            PIC X(40).
+       01 WS-PROMPT             PIC X(60).
+       01 WS-ENTRADA            PIC X(50).
        01 WS-VALOR              PIC S9(13)V9(4).
        01 WS-CENTAVOS           PIC S9(15)V9(4).
 
@@ -66,9 +91,8 @@
        P-PRINCIPAL.
            MOVE "N" TO LK-OK
            MOVE ZERO TO LK-IMPORTE
-           DISPLAY FUNCTION TRIM(LK-PROMPT) ": " WITH NO ADVANCING
-           MOVE SPACES TO WS-ENTRADA
-           ACCEPT WS-ENTRADA
+           MOVE LK-PROMPT TO WS-PROMPT
+           CALL "LEERTXT" USING WS-PROMPT WS-ENTRADA
            INSPECT WS-ENTRADA REPLACING ALL "," BY "."
 
            IF WS-ENTRADA = SPACES

@@ -7,12 +7,16 @@ $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 if (-not $NoBuild) { & .\build.ps1 -GnuCobol $GnuCobol }
 $ErrorActionPreference = 'Continue'
+# Con la consola en UTF-8, PowerShell 5.1 antepone una marca BOM a la entrada
+# de banco.exe y el primer usuario ingresado nunca coincide.
+$codificacionAnterior = [Console]::InputEncoding
+[Console]::InputEncoding = New-Object System.Text.UTF8Encoding $false
 
 $script:fallas = 0
 $script:total = 0
 
 function Reset-Datos {
-    Remove-Item data\*, reports\* -Force -ErrorAction SilentlyContinue
+    Remove-Item data\*, reports\* -Exclude .gitkeep -Force -ErrorAction SilentlyContinue
     & .\bin\batch.exe CARGA CONFIRMAR | Out-Null
 }
 
@@ -217,6 +221,8 @@ Test-Caso 'T19' 'Servicio: el rol sale de USUARIOS, no del pedido' {
     $s = Invoke-Servicio 'RECONCIL', 'SUPER01', '', ''
     Esperar $s '@RC\|0'
 }
+
+[Console]::InputEncoding = $codificacionAnterior
 
 Write-Host ''
 Write-Host "Resultado: $($script:total - $script:fallas) de $($script:total) casos OK"

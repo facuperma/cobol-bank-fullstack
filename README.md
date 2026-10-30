@@ -2,7 +2,7 @@
 
 Sistema bancario con el **núcleo en COBOL (GnuCOBOL 3.2)**, una **API REST en Python (FastAPI)** y una **app en Flutter para Android y web**.
 
-**App web:** https://facuperma.github.io/COBOL-bank/ — es la interfaz; para ingresar, la API tiene que estar corriendo en la misma PC (`.piun_api.ps1`, ver [Inicio rápido](#inicio-rápido)). Usuarios de prueba: `CAJERO01` / `1234` (cajero) y `SUPER01` / `9999` (supervisor).
+**App web:** https://facuperma.github.io/cobol-bank-fullstack/ — es la interfaz; para ingresar, la API tiene que estar corriendo en la misma PC (`.\api\run_api.ps1`, ver [Inicio rápido](#inicio-rápido)). Usuarios de prueba: `CAJERO01` / `1234` (cajero) y `SUPER01` / `9999` (supervisor).
 
 El núcleo administra clientes y cuentas, procesa depósitos, retiros y transferencias, liquida intereses, genera extractos e informes y deja un registro de auditoría de cada operación. La API y la app no reimplementan nada de eso: lo usan.
 
